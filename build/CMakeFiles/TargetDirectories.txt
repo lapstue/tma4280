@@ -1,3 +1,0 @@
-/Users/peterholiman/Desktop/Poisson/tma4280/build/CMakeFiles/poisson-f.dir
-/Users/peterholiman/Desktop/Poisson/tma4280/build/CMakeFiles/poisson.dir
-/Users/peterholiman/Desktop/Poisson/tma4280/build/CMakeFiles/common.dir
