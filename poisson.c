@@ -149,8 +149,9 @@ int main(int argc, char **argv)
     }
 
     // Calculate maximal value of solution
-    #pragma omp parallel for schedule(static)
     double u_max = 0.0;
+
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
         for (size_t j = 0; j < m; j++) {
             u_max = u_max > b[i][j] ? u_max : b[i][j];
