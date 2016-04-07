@@ -161,6 +161,9 @@ int main(int argc, char **argv)
 
     printf("u_maximus = %e\n", u_max);
 
+    double times = omp_get_wtime()-start;
+    printf("Tid = %1.16f \n", times);
+
     return 0;
 }
 
