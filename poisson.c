@@ -14,6 +14,7 @@
 #include <math.h>
 #include <memory.h>
 #include <mpi.h>
+#include <omp.h>
 
 #define PI 3.14159265358979323846
 #define true 1
@@ -37,9 +38,12 @@ int main(int argc, char **argv)
 {
 
     int size , rank, number; 
-MPI_Init(&argc, &argv); 
-MPI_Comm_size(MPI_COMM_WORLD , &size);
-MPI_Comm_rank(MPI_COMM_WORLD , &rank);
+    MPI_Init(&argc, &argv); 
+    MPI_Comm_size(MPI_COMM_WORLD , &size);
+    MPI_Comm_rank(MPI_COMM_WORLD , &rank);
+
+    double start =  omp_get_wtime();
+    printf("%d\n", start );
 
     if (argc < 2) {
         printf("Usage:\n");
@@ -55,9 +59,10 @@ MPI_Comm_rank(MPI_COMM_WORLD , &rank);
     }
 
     if(rank != 0){
-        printf("Prosess n\n");
+        printf("Prosess %d \n", rank);
     }
 
+    MPI_Finalize();
 
     // The number of grid points in each direction is n+1
     // The number of degrees of freedom in each direction is n-1

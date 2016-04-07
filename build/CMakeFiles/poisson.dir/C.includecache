@@ -13,7 +13,11 @@ stdio.h
 -
 math.h
 -
+memory.h
+-
 mpi.h
+-
+omp.h
 -
 
 /usr/local/Cellar/open-mpi/1.10.2/include/mpi.h
