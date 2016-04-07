@@ -20,7 +20,7 @@
 #define true 1
 #define false 0
 
-
+//B i vår kode er samme som B i forelesning
 
 
 typedef double real;
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
         printf("Prosess %d \n", rank);
     }
 
-    MPI_Finalize();
+  
 
     // The number of grid points in each direction is n+1
     // The number of degrees of freedom in each direction is n-1
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
 
     real *diag = mk_1D_array(m, false);
     for (size_t i = 0; i < m; i++) {
-        diag[i] = 2.0 * (1.0 - cos((i+1) * PI / n));
+        diag[i] = 2.0 * (1.0 - cos((i+1) * PI / n)); //Stor lamda
         printf("%f   ", diag[i]);
     }
 
@@ -98,8 +98,11 @@ int main(int argc, char **argv)
     real **b = mk_2D_array(m, m, false);
     real **bt = mk_2D_array(m, m, false);
     real *z = mk_1D_array(nn, false);
+
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
         for (size_t j = 0; j < m; j++) {
+          //FLER TRÅDER UTEN PROB
             b[i][j] = h * h * rhs(grid[i], grid[j]);
                     printf("%f   ", b[i][j]);
 
@@ -108,15 +111,22 @@ int main(int argc, char **argv)
     }
 
     printf("  Calculate Btilde^T = S^-1 * (S * B)^T \n Bruker hele den FST-greia");
+    
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
         fst_(b[i], &n, z, &nn);
     }
     transpose(bt, b, m);
+
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
         fstinv_(bt[i], &n, z, &nn);
     }
 
-    printf(" Solve Lambda * Xtilde = Btilde\n");
+    printf(" Solve Lambda *     #pragma omp parallel for schedule(static)
+Xtilde = Btilde\n");
+
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
         for (size_t j = 0; j < m; j++) {
             bt[i][j] = bt[i][j] / (diag[i] + diag[j]);
@@ -125,15 +135,20 @@ int main(int argc, char **argv)
     }
 
     // Calculate X = S^-1 * (S * Xtilde^T)
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
         fst_(bt[i], &n, z, &nn);
     }
+    //MPI
     transpose(b, bt, m);
+
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
         fstinv_(b[i], &n, z, &nn);
     }
 
     // Calculate maximal value of solution
+    #pragma omp parallel for schedule(static)
     double u_max = 0.0;
     for (size_t i = 0; i < m; i++) {
         for (size_t j = 0; j < m; j++) {
@@ -184,3 +199,5 @@ real **mk_2D_array(size_t n1, size_t n2, bool zero)
     }
     return ret;
 }
+
+  MPI_Finalize();
