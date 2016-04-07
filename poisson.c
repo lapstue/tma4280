@@ -123,8 +123,9 @@ int main(int argc, char **argv)
         fstinv_(bt[i], &n, z, &nn);
     }
 
-    printf(" Solve Lambda *     #pragma omp parallel for schedule(static)
-Xtilde = Btilde\n");
+    printf(" Solve Lambda * Xtilde = Btilde\n");
+
+
 
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
