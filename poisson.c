@@ -78,9 +78,9 @@ int main(int argc, char **argv)
     printf("GRID\n");
     for (size_t i = 0; i < n+1; i++) {
         grid[i] = i * h;
-           printf("%f ", grid[i]);
+         //  printf("%f ", grid[i]);
     }
-    printf("\n");
+ //   printf("\n");
 
 
 
@@ -89,10 +89,10 @@ int main(int argc, char **argv)
     real *diag = mk_1D_array(m, false);
     for (size_t i = 0; i < m; i++) {
         diag[i] = 2.0 * (1.0 - cos((i+1) * PI / n)); //Stor lamda
-        printf("%f   ", diag[i]);
+      //  printf("%f   ", diag[i]);
     }
 
-     printf("\n");
+   //  printf("\n");
 
 
     printf(" Initialize the right hand side data \n" );
@@ -105,10 +105,10 @@ int main(int argc, char **argv)
         for (size_t j = 0; j < m; j++) {
           //FLER TRÅDER UTEN PROB
             b[i][j] = h * h * rhs(grid[i], grid[j]);
-                    printf("%f   ", b[i][j]);
+             //       printf("%f   ", b[i][j]);
 
         }
-        printf("\n");
+      //  printf("\n");
     }
 
     printf("  Calculate Btilde^T = S^-1 * (S * B)^T \n Bruker hele den FST-greia");
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
     for (size_t i = 0; i < m; i++) {
         for (size_t j = 0; j < m; j++) {
             bt[i][j] = bt[i][j] / (diag[i] + diag[j]);
-            printf("%f   ", bt[i][j]);
+     //       printf("%f   ", bt[i][j]);
         }
     }
 
