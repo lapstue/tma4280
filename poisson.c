@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD , &rank);
 
     double start =  omp_get_wtime();
-    printf("%d\n", start );
+    printf("%f\n", start );
 
     if (argc < 2) {
         printf("Usage:\n");
