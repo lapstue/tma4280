@@ -101,7 +101,7 @@ int main(int argc, char **argv)
     real *z = mk_1D_array(nn, false);
 
     printf("Z==\n");
-    for(i= 0; i<nn; i++){
+    for(int i= 0; i<nn; i++){
         printf("%d\n", z[i]);
     }
     printf("\n");
