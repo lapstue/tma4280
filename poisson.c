@@ -100,11 +100,7 @@ int main(int argc, char **argv)
     real **bt = mk_2D_array(m, m, false);
     real *z = mk_1D_array(nn, false);
 
-    printf("Z==\n");
-    for(int i= 0; i<nn; i++){
-        printf("%d\n", z[i]);
-    }
-    printf("\n");
+   
 
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
@@ -124,6 +120,12 @@ int main(int argc, char **argv)
         fst_(b[i], &n, z, &nn);
     }
     transpose(bt, b, m);
+
+     printf("Z==\n");
+    for(int i= 0; i<nn; i++){
+        printf("%f\n", z[i]);
+    }
+    printf("\n");
 
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
