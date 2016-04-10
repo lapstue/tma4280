@@ -100,6 +100,12 @@ int main(int argc, char **argv)
     real **bt = mk_2D_array(m, m, false);
     real *z = mk_1D_array(nn, false);
 
+    printf("Z==\n");
+    for(i= 0; i<nn; i++){
+        printf("%d\n", z[i]);
+    }
+    printf("\n");
+
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
         for (size_t j = 0; j < m; j++) {
