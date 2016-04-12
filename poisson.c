@@ -32,8 +32,8 @@ real **mk_2D_array(size_t n1, size_t n2, bool zero);
 void transpose(real **bt, real **b, size_t m);
 void MPItranspose(real **b, real **bt, int nrColon, int m, real *sendbuf, real *recbuf, int *sendcnt, int *sdispls, int size, int rank, int *displs );
 real rhs(real x, real y);
-void fst_(real *v, int *n, real *w, int *nn);
-void fstinv_(real *v, int *n, real *w, int *nn);
+void fst_(real *v, int *n, real **w, int *nn);
+void fstinv_(real *v, int *n, real **w, int *nn);
 
 
 int main(int argc, char **argv)
@@ -108,7 +108,7 @@ int main(int argc, char **argv)
 
     real **b = mk_2D_array(nrColon, m, false);
     real **bt = mk_2D_array(nrColon, m,false);
-    real *z = mk_1D_array(trad*nn, false);
+    real **z = mk_2D_array(trad, nn, false);
     real *diag = mk_1D_array(m, false);     
 
     real *sendbuf = mk_1D_array(nrColon*m, false);
@@ -169,19 +169,19 @@ int main(int argc, char **argv)
     
     //#pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
-        fst_(b[i], &n, &z[omp_get_thread_num()*nn], &nn);
+        fst_(b[i], &n, &z[omp_get_thread_num()], &nn);
     }
 
     
 
 
 
-    for (size_t i = 0; i < nrColon; i++) {
-        for (size_t j = 0; j < m; j++) {
-                   printf("Rank=%i, %f   ",rank, b[i][j]);
-        }
-        printf("\n");
-    }
+    // for (size_t i = 0; i < nrColon; i++) {
+    //     for (size_t j = 0; j < m; j++) {
+    //                printf("Rank=%i, %f   ",rank, b[i][j]);
+    //     }
+    //     printf("\n");
+    // }
 
 
    // transpose(bt, b, m);
@@ -189,15 +189,15 @@ int main(int argc, char **argv)
 
 
 
-printf("MORRADI\n");
+// printf("\nMORRADI\n");
 
 
- for (size_t i = 0; i < nrColon; i++) {
-        for (size_t j = 0; j < m; j++) {
-                   printf("Rank=%i, %f   ",rank, bt[i][j]);
-        }
-        printf("\n");
-    }
+//  for (size_t i = 0; i < nrColon; i++) {
+//         for (size_t j = 0; j < m; j++) {
+//                    printf("Rank=%i, %f   ",rank, bt[i][j]);
+//         }
+//         printf("\n");
+//     }
 
 ////////////////////////////////////
     //  printf("\nB==\n");
@@ -218,52 +218,58 @@ printf("MORRADI\n");
     // }
 
 
-    #pragma omp parallel for schedule(static)
+ //   #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
-        fstinv_(bt[i], &n, &z[omp_get_thread_num()*nn], &nn);
+        fstinv_(bt[i], &n, &z[omp_get_thread_num()], &nn);
     }
 
     // printf(" Solve Lambda * Xtilde = Btilde\n");
 
 
 
-    #pragma omp parallel for schedule(static)
+   // #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
         for (size_t j = 0; j < m; j++) {
-            bt[i][j] = bt[i][j] / (diag[i] + diag[j]);
+            bt[i][j] = bt[i][j] / (diag[j] + diag[i]);
      //       printf("%f   ", bt[i][j]);
         }
     }
 
     // Calculate X = S^-1 * (S * Xtilde^T)
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < m; i++) {
-        fst_(bt[i], &n, &z[omp_get_thread_num()*nn], &nn);
+  //  #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < nrColon; i++) {
+        fst_(bt[i], &n, &z[omp_get_thread_num()], &nn);
     }
     //MPItransponse(b,bt, m);
-    MPItranspose (b, bt,nrColon,m, sendbuf,recbuf,sendcnt,sdispls, size, rank, displs);
 
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < m; i++) {
-        fstinv_(b[i], &n, &z[omp_get_thread_num()*nn], &nn);
+    printf("\nKOM IHVERTFALL HIT...\n");
+    
+    MPItranspose (bt, b, nrColon,m, sendbuf,recbuf,sendcnt,sdispls, size, rank, displs);
+
+  //  #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < nrColon; i++) {
+        fstinv_(b[i], &n, &z[omp_get_thread_num()], &nn);
     }
+
 
     // Calculate maximal value of solution
-    double u_max = 0.0;
+ //    double u_max = 0.0;
 
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < m; i++) {
-        for (size_t j = 0; j < m; j++) {
-            u_max = u_max > b[i][j] ? u_max : b[i][j];
-        }
-    }
+
+ // //   #pragma omp parallel for schedule(static)
+ //    for (size_t i = 0; i < m; i++) {
+ //        for (size_t j = 0; j < m; j++) {
+ //            u_max = u_max > b[i][j] ? u_max : b[i][j];
+ //        }
+ //    }
+    printf("\nMEN IKKE LENGRE...?\n");
 
     MPI_Finalize();
 
-    // printf("u_maximus = %e\n", u_max);
+     // printf("u_maximus = %e\n", u_max);
 
     double times = omp_get_wtime()-start;
-    // printf("Tid = %1.16f \n", times);
+     printf("Tid = %1.16f \n", times);
 
     return 0;
 }
@@ -293,15 +299,14 @@ void MPItranspose(real **b, real **bt, int nrColon, int m, real *sendbuf, real *
     
     for (int o=0; o < size; o++) {
 
-        // printf("Fra prosessor %i Til prosessor %i: ",rank, o );
+        printf("Fra prosessor %i Til prosessor %i: ",rank, o );
 
         for (int i=0; i < nrColon; i++) {
             
             for (int j=displs[o]; j < displs[o+1]; j++) {  //Går denne out of bpunds..?
-            // for (int j=0; j < m; j++) { 
                 sendbuf[tt]=b[i][j];
 
-                // printf("%f ", sendbuf[tt]);
+                printf("%f ", sendbuf[tt]);
                 tt++;
 
             }
@@ -320,11 +325,13 @@ void MPItranspose(real **b, real **bt, int nrColon, int m, real *sendbuf, real *
 
 
     for (int o = 0; o < size; o++){
-        for (int i=0; i < nrColon; i++) {
-            for (int j=displs[o]; j <  displs[o+1]; j++) {
- 
+        
+
+        for (int j=displs[o]; j <  displs[o+1]; j++) {
+            for (int i=0; i < nrColon; i++) {
+
                 bt[i][j]=recbuf[tt];
-                //  printf("DONE"); 
+               //   printf("DONE"); 
 
                 // printf("%f \n", recbuf[tt]);
                 tt++;
