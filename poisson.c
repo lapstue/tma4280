@@ -189,6 +189,16 @@ int main(int argc, char **argv)
 
 
 
+printf("MORRADI\n");
+
+
+ for (size_t i = 0; i < nrColon; i++) {
+        for (size_t j = 0; j < m; j++) {
+                   printf("Rank=%i, %f   ",rank, bt[i][j]);
+        }
+        printf("\n");
+    }
+
 ////////////////////////////////////
     //  printf("\nB==\n");
     // for(int i= 0; i<m; i++){
@@ -231,7 +241,7 @@ int main(int argc, char **argv)
         fst_(bt[i], &n, &z[omp_get_thread_num()*nn], &nn);
     }
     //MPItransponse(b,bt, m);
-    transpose(b, bt, m);
+    MPItranspose (b, bt,nrColon,m, sendbuf,recbuf,sendcnt,sdispls, size, rank, displs);
 
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
@@ -278,42 +288,45 @@ void transpose(real **bt, real **b, size_t m)
 
 
 void MPItranspose(real **b, real **bt, int nrColon, int m, real *sendbuf, real *recbuf, int *sendcnt, int *sdispls, int size, int rank, int *displs ){
-    printf("SENDBUF for rank = %i \n", rank);
+    // printf("SENDBUF for rank = %i \n", rank);
     int tt = 0;
     
     for (int o=0; o < size; o++) {
 
-        printf("Fra prosessor %i Til prosessor %i: ",rank, o );
+        // printf("Fra prosessor %i Til prosessor %i: ",rank, o );
 
         for (int i=0; i < nrColon; i++) {
             
             for (int j=displs[o]; j < displs[o+1]; j++) {  //Går denne out of bpunds..?
-              
-                sendbuf[tt]=&b[i][j];
+            // for (int j=0; j < m; j++) { 
+                sendbuf[tt]=b[i][j];
 
-                printf("%f ", sendbuf[tt]);
+                // printf("%f ", sendbuf[tt]);
                 tt++;
 
             }
        
         }
-             printf(" \n");
+             // printf(" \n");
 
     }
     
-    printf("RECBUF");  //DENNE PRINTES ALDRI....
- 
+// printf("REDDI\n"); 
 
     MPI_Alltoallv(sendbuf, sendcnt, sdispls, MPI_DOUBLE, recbuf, sendcnt, sdispls, MPI_DOUBLE, MPI_COMM_WORLD);
 
  
     tt = 0;
+
+
     for (int o = 0; o < size; o++){
         for (int i=0; i < nrColon; i++) {
             for (int j=displs[o]; j <  displs[o+1]; j++) {
-                  
+ 
                 bt[i][j]=recbuf[tt];
-                printf("%f ", recbuf[tt]);
+                //  printf("DONE"); 
+
+                // printf("%f \n", recbuf[tt]);
                 tt++;
             }
         }
