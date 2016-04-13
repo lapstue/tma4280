@@ -146,6 +146,7 @@ int main(int argc, char **argv)
 
 
     // GRID
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < n+1; i++) {
         grid[i] = i * h;
          //  printf("%f ", grid[i]);
@@ -153,6 +154,7 @@ int main(int argc, char **argv)
 
 
 // int rrr = 0;
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < m; i++) {
         diag[i] = 2.0 * (1.0 - cos((i+1) * PI / n)); //Stor lamda
    // if (rank == 0)
@@ -169,7 +171,7 @@ int main(int argc, char **argv)
 
     // printf(" Initialize the right hand side data \n" );
     
-   // #pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
         for (size_t j = 0; j < m; j++) {
           //  b[i][j] = h * h;
@@ -180,7 +182,7 @@ int main(int argc, char **argv)
 
     // printf("  Calculate Btilde^T = S^-1 * (S * B)^T \n Bruker hele den FST-greia");
  
-    //#pragma omp parallel for schedule(static)
+  //  #pragma omp parallel for schedule(guided, 5)
     for (size_t i = 0; i < nrColon; i++) {
         fst_(b[i], &n, &z[omp_get_thread_num()], &nn);
     }
@@ -245,6 +247,7 @@ int main(int argc, char **argv)
     //     }
     // }
 
+    #pragma omp parallel for schedule(static)
 
     for (int j=0; j < nrColon; j++) {
        for (int i=0; i < m; i++) {
@@ -287,7 +290,7 @@ int main(int argc, char **argv)
 //         printf("\n");
 //     }
 
-  //  #pragma omp parallel for schedule(static)
+  //      #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
         fstinv_(b[i], &n, &z[omp_get_thread_num()], &nn);
     }
@@ -303,7 +306,7 @@ int main(int argc, char **argv)
     double u_max = 0.0;
 
 
- // //   #pragma omp parallel for schedule(static)
+   #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
         for (size_t j = 0; j < m; j++) {
             u_max = u_max > ( b[i][j] - rhs(grid[i], grid[j]) )? u_max : b[i][j];
@@ -358,7 +361,7 @@ void MPItranspose(real **b, real **bt, int nrColon, int m, real *sendbuf, real *
 
         for (int i=0; i < nrColon; i++) {
             
-            for (int j=displs[o]; j < displs[o+1]; j++) {  //Går denne out of bpunds..?
+            for (int j=displs[o]; j < displs[o+1]; j++) {  
                 sendbuf[tt]=b[i][j];
 
                 // printf("%f ", sendbuf[tt]);
