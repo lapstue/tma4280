@@ -45,7 +45,8 @@ int main(int argc, char **argv)
     MPI_Comm_size(MPI_COMM_WORLD , &size);
     MPI_Comm_rank(MPI_COMM_WORLD , &rank);
 
-    double start =  omp_get_wtime();
+    double start =  MPI_Wtime();
+    real umaxglob=0;
 
     //printf("Size = %i\n", size);
     // printf("%f\n", start );
@@ -93,10 +94,10 @@ int main(int argc, char **argv)
     }
     //cnt[size-1] += m%size;
 
-        if(rank == 0) {
-            //printf("Prosessor %i har cnt=%i og displs=%i\n", i, cnt[i], displs[i] );
-            printf("Disp 0 = %i, Disp 1 = %i, Disp 2 = %i, Disp 3 = %i, \n", displs[0], displs[1], displs[2], displs[3]);
-        }
+        // if(rank == 0) {
+        //     //printf("Prosessor %i har cnt=%i og displs=%i\n", i, cnt[i], displs[i] );
+        //     printf("Disp 0 = %i, Disp 1 = %i, Disp 2 = %i, Disp 3 = %i, \n", displs[0], displs[1], displs[2], displs[3]);
+        // }
 
     int nrColon = cnt[rank];
     
@@ -141,7 +142,7 @@ int main(int argc, char **argv)
   //   if (rank==1) printf("sdispl=%i  ",sdispls[i]);
   // }
 
-     printf("Rank=(%i), numCol=%i, sendcnt=%i, sdispls = %i \n",rank, nrColon, sendcnt[1], sdispls[1]);
+   //  printf("Rank=(%i), numCol=%i, sendcnt=%i, sdispls = %i \n",rank, nrColon, sendcnt[1], sdispls[1]);
 
 
     // GRID
@@ -171,8 +172,8 @@ int main(int argc, char **argv)
    // #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
         for (size_t j = 0; j < m; j++) {
-            b[i][j] = h * h;
-            // b[i][j] = h * h * rhs(grid[i], grid[j]);
+          //  b[i][j] = h * h;
+             b[i][j] = h * h * rhs(grid[i], grid[j]);
 
         }
     }
@@ -305,23 +306,31 @@ int main(int argc, char **argv)
  // //   #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
         for (size_t j = 0; j < m; j++) {
-            u_max = u_max > b[i][j] ? u_max : b[i][j];
+            u_max = u_max > ( b[i][j] - rhs(grid[i], grid[j]) )? u_max : b[i][j];
         }
     }
    // printf("\nMEN IKKE LENGRE...?\n");
 
+    MPI_Reduce (&u_max, &umaxglob, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
     MPI_Finalize();
 
-      printf("u_maximus = %e\n", u_max);
+         //     printf("u_max = %e\n", u_max);
 
-    double times = omp_get_wtime()-start;
+     if (rank == 0)
+      {
+       printf("u_maximus = %e\n", umaxglob);
+    double times = MPI_Wtime()-start;
      printf("Tid = %1.16f \n", times);
+    }
+    
 
     return 0;
 }
 
 real rhs(real x, real y) {
-    return 2 * (y - y*y + x - x*x);
+    //return 2 * (y - y*y + x - x*x);
+    return 5.0*PI*PI*sin(PI*x)*sin(2.0*PI*y);
 
 }
 
