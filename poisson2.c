@@ -35,6 +35,8 @@ void fst_(Real *v, int *n, Real *w, int *nn);
 void fstinv_(Real *v, int *n, Real *w, int *nn);
 void splitVector(int globLen, int size, int** len, int** displ);
 int initfunc(int i);
+Real rhs(Real x, Real y);
+
 
 int main(int argc, char **argv )
 {
@@ -67,6 +69,9 @@ int main(int argc, char **argv )
   mglob = n-1;
   nn = 4*n;
 
+    h    = 1./(Real)n;
+  pi   = 4.*atan(1.);
+
   splitVector(n-1, size, &cols, &ofs);
 
 
@@ -79,8 +84,12 @@ int main(int argc, char **argv )
 
   m=cols[rank];
   int localdof = m*mglob;
+  Real *grid = createRealArray(n+1);
 
-
+    for (size_t i = 0; i < n+1; i++) {
+        grid[i] = i * h;
+         //  printf("%f ", grid[i]);
+    }
   
 
 
@@ -125,21 +134,26 @@ int main(int argc, char **argv )
      printf("Rank=(%i), numCol=%i, sendcnt=%i, sdispls = %i \n",rank,m, sendcnt[rank], sdispl[rank]);
 
 
-  h    = 1./(Real)n;
-  pi   = 4.*atan(1.);
+
 
   Real startTime=MPI_Wtime();
 
-  #pragma omp parallel for schedule(static)
+  //#pragma omp parallel for schedule(static)
   for (i=0; i < mglob; i++) {
     diag[i] = 2.*(1.-cos((i+1)*pi/(Real)n));
+    if (rank == 0)
+    {
+      /* code */
+      printf("Diag[%i] = %f\n", i, diag[i] );
+    }
   }
 
   #pragma omp parallel for schedule(static)
+ 
   for (j=0; j < m; j++) {
     for (i=0; i < mglob; i++) {
-      // b[j][i] = h*h;
-      b[j][i] = (i+1)*(j+2+ofs[rank]);
+       b[j][i] = h*h;
+     // b[j][i] = (i+1)*(j+2+ofs[rank]);
     }
   }
 
@@ -149,37 +163,69 @@ int main(int argc, char **argv )
   //   }
   //   if (rank==1) printf("\n");
   // }
-  
+  // for (j=0; j < m; j++) {
+  //  for (i=0; i < mglob; i++) {
+  //                  printf("Rank=%i, %f   ",rank, b[j][i]);
+  //   }
+  //   printf("\n");
+  // }
   #pragma omp parallel for schedule(static)
   for (j=0; j < m; j++) {
     fst_(b[j], &n, z[omp_get_thread_num()], &nn);
   }
+ 
+   
+  
+  transpose (bt,b,m,mglob,sendbuf,recbuf,sendcnt,sdispl,rank, cols, ofs, size);
+
+
+
+  #pragma omp parallel for schedule(static)
+  for (i=0; i < m; i++) {
+   fstinv_(bt[i], &n, z[omp_get_thread_num()], &nn);
+  }
+  printf("\nMORDI\n");
+   for (j=0; j < m; j++) {
+   for (i=0; i < mglob; i++) {
+                   printf("Rank=%i, %f   ",rank, bt[j][i]);
+    }
+    printf("\n");
+  }
+
+  //  for (j=0; j < m; j++) {
+  //  for (i=0; i < mglob; i++) {
+  //                  printf("Rank=%i, %f   ",rank, bt[j][i]);
+  //   }
+  //     printf("\n");
+
+  // }
+
+  #pragma omp parallel for schedule(static)
+  for (j=0; j < m; j++) {
+   for (i=0; i < mglob; i++) {
+     bt[j][i] = bt[j][i]/(diag[i]+diag[j]);
+    }
+  }
+  
+// printf("\nMORDI\n");
+//    for (j=0; j < m; j++) {
+//    for (i=0; i < mglob; i++) {
+//                    printf("Rank=%i, %f   ",rank, bt[j][i]);
+//     }
+//     printf("\n");
+//   }
+
+  #pragma omp parallel for schedule(static)
+  for (i=0; i < m; i++) {
+    fst_(bt[i], &n, z[omp_get_thread_num()], &nn);
+  }
 
   transpose (bt,b,m,mglob,sendbuf,recbuf,sendcnt,sdispl,rank, cols, ofs, size);
 
-  // #pragma omp parallel for schedule(static)
-  // for (i=0; i < m; i++) {
-  //  fstinv_(bt[i], &n, z[omp_get_thread_num()], &nn);
-  // }
-
-  // #pragma omp parallel for schedule(static)
-  // for (j=0; j < m; j++) {
-  //  for (i=0; i < mglob; i++) {
-  //    bt[j][i] = bt[j][i]/(diag[i]+diag[j]);
-  //   }
-  // }
-  
-  // #pragma omp parallel for schedule(static)
-  // for (i=0; i < m; i++) {
-  //   fst_(bt[i], &n, z[omp_get_thread_num()], &nn);
-  // }
-
-  // transpose (bt,b,m,mglob,sendbuf,recbuf,sendcnt,sdispl,rank, cols, ofs, size);
-
-  // #pragma omp parallel for schedule(static)
-  // for (j=0; j < m; j++) {
-  //   fstinv_(b[j], &n, z[omp_get_thread_num()], &nn);
-  // }
+  #pragma omp parallel for schedule(static)
+  for (j=0; j < m; j++) {
+    fstinv_(b[j], &n, z[omp_get_thread_num()], &nn);
+  }
 
   umax = 0.0;
   // for (j=0; j < m; j++) {
@@ -259,6 +305,12 @@ void transpose (Real **bt, Real **b, int m, int mglob, Real *sendbuf,
   //   }
   //   if (rank==out) printf("\n");
   // }
+
+}
+
+
+Real rhs(Real x, Real y) {
+    return 2 * (y - y*y + x - x*x);
 
 }
 

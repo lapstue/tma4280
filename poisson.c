@@ -32,8 +32,8 @@ real **mk_2D_array(size_t n1, size_t n2, bool zero);
 void transpose(real **bt, real **b, size_t m);
 void MPItranspose(real **b, real **bt, int nrColon, int m, real *sendbuf, real *recbuf, int *sendcnt, int *sdispls, int size, int rank, int *displs );
 real rhs(real x, real y);
-void fst_(real *v, int *n, real **w, int *nn);
-void fstinv_(real *v, int *n, real **w, int *nn);
+void fst_(real *v, int *n, real *w, int *nn);
+void fstinv_(real *v, int *n, real *w, int *nn);
 
 
 int main(int argc, char **argv)
@@ -60,9 +60,10 @@ int main(int argc, char **argv)
 
 
 
- 
-    
- 
+     if (0 ){
+
+    printf("15 prosent 4 =%i\n", 15%4 );
+ }
 
     // The number of grid points in each direction is n+1
     // The number of degrees of freedom in each direction is n-1
@@ -74,23 +75,28 @@ int main(int argc, char **argv)
     int displs[size+1];
     displs[size] = m;
     displs[0]=0;
+
+
+
+
     for(int i = 0;i<size;i++){
         cnt[i] = m / size; // nrColon for hver prosessor  antt elementer jeg eier * ant element den eier
-        if (m % size && i >= (size - m % size)){
-            cnt[i]++;
+        // if (m % size && i >= (size - m % size)){
+        if (m % size && i == 0){
+            cnt[i] = cnt[i]+(m%size);
         }
         if (i < size-1){
             displs[i+1] = displs[i]+cnt[i];
         }
 
-        if(rank == 0) {
-            //printf("Prosessor %i har cnt=%i og displs=%i\n", i, cnt[i], displs[i] );
-            printf("Disp 0 = %i, Disp 1 = %i, Disp 2 = %i, Disp 3 = %i, \n", displs[0], displs[1], displs[2], displs[3]);
-        }        //displs[i] = i * (m / size); //displacement for hver prosessor
+                //displs[i] = i * (m / size); //displacement for hver prosessor
     }
     //cnt[size-1] += m%size;
 
-
+        if(rank == 0) {
+            //printf("Prosessor %i har cnt=%i og displs=%i\n", i, cnt[i], displs[i] );
+            printf("Disp 0 = %i, Disp 1 = %i, Disp 2 = %i, Disp 3 = %i, \n", displs[0], displs[1], displs[2], displs[3]);
+        }
 
     int nrColon = cnt[rank];
     
@@ -108,7 +114,7 @@ int main(int argc, char **argv)
 
     real **b = mk_2D_array(nrColon, m, false);
     real **bt = mk_2D_array(nrColon, m,false);
-    real **z = mk_2D_array(trad, nn, false);
+    real *z = mk_1D_array(trad*nn, false);
     real *diag = mk_1D_array(m, false);     
 
     real *sendbuf = mk_1D_array(nrColon*m, false);
@@ -145,11 +151,17 @@ int main(int argc, char **argv)
     }
 
 
-
+// int rrr = 0;
     for (size_t i = 0; i < m; i++) {
         diag[i] = 2.0 * (1.0 - cos((i+1) * PI / n)); //Stor lamda
-      //  printf("%f   ", diag[i]);
-    }
+   // if (rank == 0)
+   //  {
+   //    /* code */
+   //    printf("Diag[%i] = %f\n", rrr, diag[i] );
+   //  }  
+
+    // rrr++;
+      }
 
    //  printf("\n");
 
@@ -159,14 +171,14 @@ int main(int argc, char **argv)
    // #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
         for (size_t j = 0; j < m; j++) {
-           // b[i][j] = h * h;
-             b[i][j] = h * h * rhs(grid[i], grid[j]);
+            b[i][j] = h * h;
+            // b[i][j] = h * h * rhs(grid[i], grid[j]);
 
         }
     }
 
     // printf("  Calculate Btilde^T = S^-1 * (S * B)^T \n Bruker hele den FST-greia");
-    
+ 
     //#pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
         fst_(b[i], &n, &z[omp_get_thread_num()], &nn);
@@ -174,14 +186,14 @@ int main(int argc, char **argv)
 
     
 
+   // for (size_t i = 0; i < nrColon; i++) {
+   //      for (size_t j = 0; j < m; j++) {
+   //                 printf("Rank=%i, %f   ",rank, b[i][j]);
+   //      }
+   //      printf("\n");
+   //  }
 
-
-    // for (size_t i = 0; i < nrColon; i++) {
-    //     for (size_t j = 0; j < m; j++) {
-    //                printf("Rank=%i, %f   ",rank, b[i][j]);
-    //     }
-    //     printf("\n");
-    // }
+    
 
 
    // transpose(bt, b, m);
@@ -189,15 +201,10 @@ int main(int argc, char **argv)
 
 
 
-// printf("\nMORRADI\n");
+// printf("\nETTER\n");
 
 
-//  for (size_t i = 0; i < nrColon; i++) {
-//         for (size_t j = 0; j < m; j++) {
-//                    printf("Rank=%i, %f   ",rank, bt[i][j]);
-//         }
-//         printf("\n");
-//     }
+
 
 ////////////////////////////////////
     //  printf("\nB==\n");
@@ -223,50 +230,89 @@ int main(int argc, char **argv)
         fstinv_(bt[i], &n, &z[omp_get_thread_num()], &nn);
     }
 
+
+
     // printf(" Solve Lambda * Xtilde = Btilde\n");
 
 
 
    // #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < nrColon; i++) {
-        for (size_t j = 0; j < m; j++) {
-            bt[i][j] = bt[i][j] / (diag[j] + diag[i]);
-     //       printf("%f   ", bt[i][j]);
+    // for (size_t i = 0; i < nrColon; i++) {
+    //     for (size_t j = 0; j < m; j++) {
+    //         bt[i][j] = bt[i][j] / (diag[i] + diag[j]);
+    //  //       printf("%f   ", bt[i][j]);
+    //     }
+    // }
+
+
+    for (int j=0; j < nrColon; j++) {
+       for (int i=0; i < m; i++) {
+            bt[j][i] = bt[j][i]/(diag[i]+diag[j]);
         }
     }
+
+
+    // for (size_t i = 0; i < nrColon; i++) {
+    //     for (size_t j = 0; j < m; j++) {
+    //                printf("Rank=%i, %f   ",rank, bt[i][j]);
+    //     }
+    //     printf("\n");
+    // }
 
     // Calculate X = S^-1 * (S * Xtilde^T)
   //  #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
         fst_(bt[i], &n, &z[omp_get_thread_num()], &nn);
     }
+
+
     //MPItransponse(b,bt, m);
 
-    printf("\nKOM IHVERTFALL HIT...\n");
+    // printf("\nKOM IHVERTFALL HIT...\n");
     
+
+    
+
     MPItranspose (bt, b, nrColon,m, sendbuf,recbuf,sendcnt,sdispls, size, rank, displs);
+
+
+// printf("\nETTER\n");
+
+
+//  for (size_t i = 0; i < nrColon; i++) {
+//         for (size_t j = 0; j < m; j++) {
+//                    printf("Rank=%i, %f   ",rank, b[i][j]);
+//         }
+//         printf("\n");
+//     }
 
   //  #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
         fstinv_(b[i], &n, &z[omp_get_thread_num()], &nn);
     }
 
+    //  for (size_t i = 0; i < nrColon; i++) {
+    //     for (size_t j = 0; j < m; j++) {
+    //                printf("Rank=%i, %f   ",rank, b[i][j]);
+    //     }
+    //     printf("\n");
+    // }
 
     // Calculate maximal value of solution
- //    double u_max = 0.0;
+    double u_max = 0.0;
 
 
  // //   #pragma omp parallel for schedule(static)
- //    for (size_t i = 0; i < m; i++) {
- //        for (size_t j = 0; j < m; j++) {
- //            u_max = u_max > b[i][j] ? u_max : b[i][j];
- //        }
- //    }
-    printf("\nMEN IKKE LENGRE...?\n");
+    for (size_t i = 0; i < nrColon; i++) {
+        for (size_t j = 0; j < m; j++) {
+            u_max = u_max > b[i][j] ? u_max : b[i][j];
+        }
+    }
+   // printf("\nMEN IKKE LENGRE...?\n");
 
     MPI_Finalize();
 
-     // printf("u_maximus = %e\n", u_max);
+      printf("u_maximus = %e\n", u_max);
 
     double times = omp_get_wtime()-start;
      printf("Tid = %1.16f \n", times);
@@ -299,14 +345,14 @@ void MPItranspose(real **b, real **bt, int nrColon, int m, real *sendbuf, real *
     
     for (int o=0; o < size; o++) {
 
-        printf("Fra prosessor %i Til prosessor %i: ",rank, o );
+        // printf("Fra prosessor %i Til prosessor %i: ",rank, o );
 
         for (int i=0; i < nrColon; i++) {
             
             for (int j=displs[o]; j < displs[o+1]; j++) {  //Går denne out of bpunds..?
                 sendbuf[tt]=b[i][j];
 
-                printf("%f ", sendbuf[tt]);
+                // printf("%f ", sendbuf[tt]);
                 tt++;
 
             }
@@ -370,16 +416,3 @@ real **mk_2D_array(size_t n1, size_t n2, bool zero)
     return ret;
 }
 
-
-void splitVector(int globLen, int size, int** len, int** displ)
-{
-  *len = calloc(size,sizeof(int));
-  *displ = calloc(size,sizeof(int));
-  for (int i=0;i<size;++i) {
-    (*len)[i] = globLen/size;
-    if (globLen % size && i >= (size - globLen % size))
-      (*len)[i]++;
-    if (i < size-1)
-      (*displ)[i+1] = (*displ)[i]+(*len)[i];
-  }
-}
