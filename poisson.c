@@ -23,17 +23,20 @@
 //B i vår kode er samme som B i forelesning
 
 
-typedef double real;
+//typedef double double;
 typedef int bool;
 
 // Function prototypes
-real *mk_1D_array(size_t n, bool zero);
-real **mk_2D_array(size_t n1, size_t n2, bool zero);
-void transpose(real **bt, real **b, size_t m);
-void MPItranspose(real **b, real **bt, int nrColon, int m, real *sendbuf, real *recbuf, int *sendcnt, int *sdispls, int size, int rank, int *displs );
-real rhs(real x, real y);
-void fst_(real *v, int *n, real *w, int *nn);
-void fstinv_(real *v, int *n, real *w, int *nn);
+double *mk_1D_array(size_t n, bool zero);
+double **mk_2D_array(size_t n1, size_t n2, bool zero);
+void transpose(double **bt, double **b, size_t m);
+void MPItranspose(double **b, double **bt, int nrColon, int m, double *sendbuf, double *recbuf, int *sendcnt, int *sdispls, int size, int rank, int *displs );
+double func1(double x, double y);
+double func2(double x, double y);
+void fst_(double *v, int *n, double *w, int *nn);
+void fstinv_(double *v, int *n, double *w, int *nn);
+
+
 
 
 int main(int argc, char **argv)
@@ -46,7 +49,7 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD , &rank);
 
     double start =  MPI_Wtime();
-    real umaxglob=0;
+    double umaxglob=0;
 
     //printf("Size = %i\n", size);
     // printf("%f\n", start );
@@ -106,20 +109,22 @@ int main(int argc, char **argv)
     int pros_dof = nrColon*m; 
 
     int nn = 4 * n;
-    real h = 1.0 / n;
+    double h = 1.0 / n;
 
     int trad = omp_get_max_threads();
 
     // Grid points
-    real *grid = mk_1D_array(n+1, false);
+    double *grid = mk_1D_array(n+1, false);
 
-    real **b = mk_2D_array(nrColon, m, false);
-    real **bt = mk_2D_array(nrColon, m,false);
-    real *z = mk_1D_array(trad*nn, false);
-    real *diag = mk_1D_array(m, false);     
+    double **b = mk_2D_array(nrColon, m, false);
+    double **bt = mk_2D_array(nrColon, m,false);
+    double **z = mk_2D_array(trad,nn, false);
 
-    real *sendbuf = mk_1D_array(nrColon*m, false);
-    real *recbuf = mk_1D_array(nrColon*m, false); 
+    //double **z = createMatrix(trad, nn);
+    double *diag = mk_1D_array(m, false);     
+
+    double *sendbuf = mk_1D_array(nrColon*m, false);
+    double *recbuf = mk_1D_array(nrColon*m, false); 
     // int sendcnt = (int)malloc(size*sizeof(int));
     // int sdispls = (int)malloc(size*sizeof(int))
 
@@ -175,16 +180,16 @@ int main(int argc, char **argv)
     for (size_t i = 0; i < nrColon; i++) {
         for (size_t j = 0; j < m; j++) {
           //  b[i][j] = h * h;
-             b[i][j] = h * h * rhs(grid[i], grid[j]);
+             b[i][j] = h * h * func1(grid[i], grid[j]);
 
         }
     }
 
     // printf("  Calculate Btilde^T = S^-1 * (S * B)^T \n Bruker hele den FST-greia");
  
-  //  #pragma omp parallel for schedule(guided, 5)
+    #pragma omp parallel for schedule(guided, 5)
     for (size_t i = 0; i < nrColon; i++) {
-        fst_(b[i], &n, &z[omp_get_thread_num()], &nn);
+        fst_(b[i], &n, z[omp_get_thread_num()], &nn);
     }
 
     
@@ -228,9 +233,9 @@ int main(int argc, char **argv)
     // }
 
 
- //   #pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
-        fstinv_(bt[i], &n, &z[omp_get_thread_num()], &nn);
+        fstinv_(bt[i], &n, z[omp_get_thread_num()], &nn);
     }
 
 
@@ -264,9 +269,9 @@ int main(int argc, char **argv)
     // }
 
     // Calculate X = S^-1 * (S * Xtilde^T)
-  //  #pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
-        fst_(bt[i], &n, &z[omp_get_thread_num()], &nn);
+        fst_(bt[i], &n, z[omp_get_thread_num()], &nn);
     }
 
 
@@ -290,9 +295,9 @@ int main(int argc, char **argv)
 //         printf("\n");
 //     }
 
-  //      #pragma omp parallel for schedule(static)
+     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
-        fstinv_(b[i], &n, &z[omp_get_thread_num()], &nn);
+        fstinv_(b[i], &n, z[omp_get_thread_num()], &nn);
     }
 
     //  for (size_t i = 0; i < nrColon; i++) {
@@ -306,10 +311,11 @@ int main(int argc, char **argv)
     double u_max = 0.0;
 
 
-   #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
+       #pragma omp parallel for schedule(static)
+
         for (size_t j = 0; j < m; j++) {
-            u_max = u_max > ( b[i][j] - rhs(grid[i], grid[j]) )? u_max : b[i][j];
+            u_max = u_max > ( b[i][j] - func2(grid[i], grid[j]) )? u_max : b[i][j];
         }
     }
    // printf("\nMEN IKKE LENGRE...?\n");
@@ -331,13 +337,19 @@ int main(int argc, char **argv)
     return 0;
 }
 
-real rhs(real x, real y) {
+double func1(double x, double y) {
     //return 2 * (y - y*y + x - x*x);
     return 5.0*PI*PI*sin(PI*x)*sin(2.0*PI*y);
 
 }
 
-void transpose(real **bt, real **b, size_t m)
+double func2(double x, double y) {
+    //return 2 * (y - y*y + x - x*x);
+    return sin(PI*x)*sin(2.0*PI*y);
+
+}
+
+void transpose(double **bt, double **b, size_t m)
 {
     for (size_t i = 0; i < m; i++) {
         for (size_t j = 0; j < m; j++) {
@@ -351,7 +363,7 @@ void transpose(real **bt, real **b, size_t m)
     //MPItranspose (b, bt,nrColon,m, sendbuf,recbuf,sendcnt,sdispls, size, rank, displs);
 
 
-void MPItranspose(real **b, real **bt, int nrColon, int m, real *sendbuf, real *recbuf, int *sendcnt, int *sdispls, int size, int rank, int *displs ){
+void MPItranspose(double **b, double **bt, int nrColon, int m, double *sendbuf, double *recbuf, int *sendcnt, int *sdispls, int size, int rank, int *displs ){
     // printf("SENDBUF for rank = %i \n", rank);
     int tt = 0;
     
@@ -403,23 +415,23 @@ void MPItranspose(real **b, real **bt, int nrColon, int m, real *sendbuf, real *
 
 
 
-real *mk_1D_array(size_t n, bool zero)
+double *mk_1D_array(size_t n, bool zero)
 {
     if (zero) {
-        return (real *)calloc(n, sizeof(real));
+        return (double *)calloc(n, sizeof(double));
     }
-    return (real *)malloc(n * sizeof(real));
+    return (double *)malloc(n * sizeof(double));
 }
 
-real **mk_2D_array(size_t n1, size_t n2, bool zero)
+double **mk_2D_array(size_t n1, size_t n2, bool zero)
 {
-    real **ret = (real **)malloc(n1 * sizeof(real *));
+    double **ret = (double **)malloc(n1 * sizeof(double *));
 
     if (zero) {
-        ret[0] = (real *)calloc(n1 * n2, sizeof(real));
+        ret[0] = (double *)calloc(n1 * n2, sizeof(double));
     }
     else {
-        ret[0] = (real *)malloc(n1 * n2 * sizeof(real));
+        ret[0] = (double *)malloc(n1 * n2 * sizeof(double));
     }
 
     for (size_t i = 1; i < n1; i++) {
