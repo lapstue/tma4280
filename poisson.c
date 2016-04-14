@@ -69,12 +69,13 @@ int main(int argc, char **argv)
     displs[0]=0; //Displacement til første prosessor er alltid 0
 
 
-
+   int  overflow = m % size; //ant kolonner som blir til overs
 
     for(int i = 0;i<size;i++){
         cnt[i] = m / size; // nrColon for hver prosessor  
-        if (m % size && i == 0){ //prosess 0 får resten om det ikke er delelig
-            cnt[i] = cnt[i]+(m%size);
+        if (overflow != 0){ 
+            cnt[i]++; //fordeler de ekstra kolonnene
+            overflow--;
         }
         if (i < size-1){
             displs[i+1] = displs[i]+cnt[i];
@@ -82,9 +83,10 @@ int main(int argc, char **argv)
 
     }
  
-
     int nrColon = cnt[rank]; //ant kolonner "jeg" har
     int pros_dof = nrColon*m;  //ant lementer jeg har
+
+    printf("Prosessor %i nrcolon = %i, displs[rank] = %i \n", rank, nrColon, displs[rank]);
 
     int nn = 4 * n;
     double h = 1.0 / n;
@@ -116,9 +118,11 @@ int main(int argc, char **argv)
 
     // GRID
     #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < n+1; i++) {
+    for (int i = 0; i < n+1; i++) {
         grid[i] = i * h;
     }
+
+
 
 
     #pragma omp parallel for schedule(static)
@@ -132,7 +136,7 @@ int main(int argc, char **argv)
     for (size_t i = 0; i < nrColon; i++) {
         for (size_t j = 0; j < m; j++) {
         //  b[i][j] = h * h;
-            b[i][j] = h * h * func1(grid[i], grid[j]); //evaluerer funksjoen * h*h
+            b[i][j] = h * h * func1(grid[i+displs[rank]], grid[j]); //evaluerer funksjoen * h*h
         }
     }
 
@@ -155,7 +159,7 @@ int main(int argc, char **argv)
 
     for (int j=0; j < nrColon; j++) {
        for (int i=0; i < m; i++) {
-            bt[j][i] = bt[j][i]/(diag[i]+diag[j]);
+            bt[j][i] = bt[j][i]/(diag[i+displs[rank]]+diag[j]);
         }
     }
 
@@ -178,7 +182,7 @@ int main(int argc, char **argv)
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
         for (size_t j = 0; j < m; j++) {
-            u_max = u_max > ( b[i][j] - func2(grid[i], grid[j]) )? u_max : b[i][j]; //tester resultat - kjent funksjon, skal bli = 0
+            u_max = u_max > ( b[i][j] - func2(grid[displs[rank]+i], grid[j]) )? u_max : b[i][j]; //tester resultat - kjent funksjon, skal bli = 0
         }
     }
     MPI_Reduce (&u_max, &umaxglob, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD); //Finner den største u_max fra de forskjellige prosessorene og setter den til umaxglob 
@@ -192,8 +196,6 @@ int main(int argc, char **argv)
         double times = MPI_Wtime()-start; //Stopper klokka
         printf("Time elapsed = %1.16f \n", times); //Pinter tid
     }
-    
-
     return 0;
 }
 
