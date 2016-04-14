@@ -69,7 +69,7 @@ int main(int argc, char **argv)
     displs[0]=0; //Displacement til første prosessor er alltid 0
 
 
-   int  overflow = m % size; //ant kolonner som blir til overs
+   int  overflow = m % size; //ant kolonner som blir til overs 
 
     for(int i = 0;i<size;i++){
         cnt[i] = m / size; // nrColon for hver prosessor  
@@ -86,7 +86,6 @@ int main(int argc, char **argv)
     int nrColon = cnt[rank]; //ant kolonner "jeg" har
     int pros_dof = nrColon*m;  //ant lementer jeg har
 
-    printf("Prosessor %i nrcolon = %i, displs[rank] = %i \n", rank, nrColon, displs[rank]);
 
     int nn = 4 * n;
     double h = 1.0 / n;
@@ -213,18 +212,6 @@ double func2(double x, double y) {
     return sin(PI*x)*sin(2.0*PI*y);
 
 }
-
-void transpose(double **bt, double **b, size_t m)
-{
-    for (size_t i = 0; i < m; i++) {
-        for (size_t j = 0; j < m; j++) {
-           
-            bt[i][j] = b[j][i];
-        }
-    }
-}
-
-
 
 void MPItranspose(double **b, double **bt, int nrColon, int m, double *sendbuf, double *recbuf, int *sendcnt, int *sdispls, int size, int rank, int *displs ){
     int tt = 0; //teller
