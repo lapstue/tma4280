@@ -159,7 +159,7 @@ int main(int argc, char **argv)
 
     for (int j=0; j < nrColon; j++) {
        for (int i=0; i < m; i++) {
-            bt[j][i] = bt[j][i]/(diag[i+displs[rank]]+diag[j]);
+            bt[j][i] /= (diag[j+displs[rank]]+diag[i]);
         }
     }
 
@@ -177,12 +177,15 @@ int main(int argc, char **argv)
     }
 
     // Calculate maximal value of solution
-    double u_max = 0.0;
+    double u_max = 0.0, temp;
 
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < nrColon; i++) {
         for (size_t j = 0; j < m; j++) {
-            u_max = u_max > ( b[i][j] - func2(grid[displs[rank]+i], grid[j]) )? u_max : b[i][j]; //tester resultat - kjent funksjon, skal bli = 0
+            temp = b[i][j] - func2(grid[displs[rank]+i], grid[j]);  //tester resultat - kjent funksjon, skal bli = 0
+            if (temp > u_max){
+                u_max = temp;
+            }
         }
     }
     MPI_Reduce (&u_max, &umaxglob, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD); //Finner den største u_max fra de forskjellige prosessorene og setter den til umaxglob 
