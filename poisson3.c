@@ -24,9 +24,12 @@ typedef int bool;
 real *mk_1D_array(size_t n, bool zero);
 real **mk_2D_array(size_t n1, size_t n2, bool zero);
 void transpose(real **bt, real **b, size_t m);
-real rhs(real x, real y);
+real func1(real x, real y);
 void fst_(real *v, int *n, real *w, int *nn);
 void fstinv_(real *v, int *n, real *w, int *nn);
+
+double func1(double x, double y);
+double func2(double x, double y);
 
 int main(int argc, char **argv)
 {
@@ -62,7 +65,7 @@ int main(int argc, char **argv)
     real *z = mk_1D_array(nn, false);
     for (size_t i = 0; i < m; i++) {
         for (size_t j = 0; j < m; j++) {
-            b[i][j] = h * h ;
+            b[i][j] = h * h * func1(grid[i], grid[j]);
         }
     }
 
@@ -71,22 +74,22 @@ int main(int argc, char **argv)
         fst_(b[i], &n, z, &nn);
     }
 
-      for (size_t i = 0; i < m; i++) {
-        for (size_t j = 0; j < m; j++) {
-            printf("%f ",b[i][j] );
+    //   for (size_t i = 0; i < m; i++) {
+    //     for (size_t j = 0; j < m; j++) {
+    //         printf("%f ",b[i][j] );
              
-        }
-        printf("\n");
-    }
+    //     }
+    //     printf("\n");
+    // }
     transpose(bt, b, m);
-    printf("TRANSPOSE\n");
-      for (size_t i = 0; i < m; i++) {
-        for (size_t j = 0; j < m; j++) {
-            printf("%f ",bt[i][j] );
+    // printf("TRANSPOSE\n");
+    //   for (size_t i = 0; i < m; i++) {
+    //     for (size_t j = 0; j < m; j++) {
+    //         printf("%f ",bt[i][j] );
              
-        }
-        printf("\n");
-    }
+    //     }
+    //     printf("\n");
+    // }
     for (size_t i = 0; i < m; i++) {
         fstinv_(bt[i], &n, z, &nn);
     }
@@ -113,7 +116,7 @@ int main(int argc, char **argv)
     double u_max = 0.0;
     for (size_t i = 0; i < m; i++) {
         for (size_t j = 0; j < m; j++) {
-            u_max = u_max > b[i][j] ? u_max : b[i][j];
+            u_max = u_max > ( b[i][j] - func2(grid[i], grid[j]) ) ? u_max : b[i][j];
         }
     }
 
@@ -122,9 +125,19 @@ int main(int argc, char **argv)
     return 0;
 }
 
-real rhs(real x, real y) {
-    return 2 * (y - y*y + x - x*x);
+double func1(double x, double y) {
+    //return 2 * (y - y*y + x - x*x);
+    return 5.0*PI*PI*sin(PI*x)*sin(2.0*PI*y);
+
 }
+
+double func2(double x, double y) {
+    //return 2 * (y - y*y + x - x*x);
+    return sin(PI*x)*sin(2.0*PI*y);
+
+}
+
+
 
 void transpose(real **bt, real **b, size_t m)
 {
